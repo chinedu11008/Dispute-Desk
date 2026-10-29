@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dispute Desk</title>
+<style>
+  :root {
+    --fog: #eef1f4; --paper: #ffffff; --ink: #101b26; --ink-2: #44566a; --ink-3: #6b7b8b; --rule: #d3dae1; --rule-2: #e6ebef;
+    --jade: #0d7a64; --jade-bg: #e3f3ee; --amber: #8f5a0a; --amber-bg: #fbf0dc; --red: #b3261e; --red-bg: #fbe9e7; --blue: #2b5b8c; --blue-bg: #e6eef6;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+    --sans: "Avenir Next", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { font: 15px/1.5 var(--sans); color: var(--ink); background: var(--fog); }
+  button, select, textarea { font: inherit; color: inherit; }
+  :focus-visible { outline: 3px solid #5b9bd5; outline-offset: 2px; }
+  .app { display: grid; grid-template-columns: 340px 1fr; grid-template-rows: auto 1fr; height: 100%; }
+  header { grid-column: 1 / -1; display: flex; align-items: center; gap: 28px; padding: 12px 24px; background: var(--ink); color: #e8eef3; }
+  header h1 { font: 600 20px/1 var(--serif); margin: 0; letter-spacing: .01em; }
+  .mode { font-size: 13px; padding: 3px 10px; border-radius: 99px; background: #243545; color: #cfe0ee; }
+  .mode.sim { background: #4a3a14; color: #ffe2a6; }
+  .kpis { display: flex; gap: 26px; margin-left: auto; }
+  .kpi { display: flex; flex-direction: column; font-size: 12px; color: #9fb3c5; }
+  .kpi b { font: 600 17px/1.2 var(--serif); color: #fff; font-variant-numeric: tabular-nums; }
+  aside { background: var(--paper); border-right: 1px solid var(--rule); overflow: auto; display: flex; flex-direction: column; }
+  .add { padding: 14px 16px; border-bottom: 1px solid var(--rule); display: flex; gap: 8px; flex-wrap: wrap; }
+  .add select { flex: 1 1 100%; min-width: 0; padding: 7px 8px; border: 1px solid var(--rule); border-radius: 6px; background: #fff; }
+  .btn { border: 1px solid var(--rule); background: #fff; border-radius: 6px; padding: 8px 14px; cursor: pointer; }
+  .btn:hover { background: var(--fog); }
+  .btn.primary { background: var(--jade); border-color: var(--jade); color: #fff; font-weight: 600; }
+  .btn.primary:hover { background: #0a6653; }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .row { display: block; width: 100%; text-align: left; border: 0; border-bottom: 1px solid var(--rule-2); background: none; padding: 13px 16px; cursor: pointer; }
+  .row:hover { background: #f6f8fa; }
+  .row[aria-current="true"] { background: var(--blue-bg); box-shadow: inset 4px 0 0 var(--blue); }
+  .row .top { display: flex; justify-content: space-between; gap: 10px; font-weight: 600; }
+  .row .amt { font-variant-numeric: tabular-nums; }
+  .row .sub { color: var(--ink-2); font-size: 13px; margin-top: 2px; }
+  .row .move { margin-top: 6px; font-size: 13px; display: flex; gap: 8px; align-items: center; }
+  .chip { display: inline-block; font-size: 12px; padding: 1px 8px; border-radius: 99px; background: var(--rule-2); color: var(--ink-2); white-space: nowrap; }
+  .chip.go { background: var(--jade-bg); color: var(--jade); }
+  .chip.wait { background: var(--blue-bg); color: var(--blue); }
+  .chip.warn { background: var(--amber-bg); color: var(--amber); }
+  .chip.stop { background: var(--red-bg); color: var(--red); }
+  main { overflow: auto; padding: 28px 36px 60px; }
+  .sheet { max-width: 860px; margin: 0 auto; }
+  .empty { max-width: 520px; margin: 14vh auto 0; text-align: center; color: var(--ink-2); }
+  .empty h2 { font: 600 26px/1.2 var(--serif); color: var(--ink); margin: 0 0 8px; }
+  .empty .btn { margin: 4px; }
+  h2.case { font: 600 30px/1.15 var(--serif); margin: 0; }
+  .meta { color: var(--ink-2); margin: 6px 0 0; display: flex; gap: 22px; flex-wrap: wrap; }
+  .meta span b { color: var(--ink); font-weight: 600; }
+  section { margin-top: 30px; }
+  h3 { font: 600 19px/1.2 var(--serif); margin: 0 0 10px; }
+  blockquote { margin: 14px 0 0; padding: 2px 0 2px 16px; border-left: 3px solid var(--rule); color: var(--ink-2); font: italic 17px/1.5 var(--serif); }
+  .verdict { font: 600 24px/1.25 var(--serif); margin: 0 0 6px; }
+  .why { color: var(--ink-2); margin: 0 0 16px; max-width: 62ch; }
+  .bars { display: grid; grid-template-columns: minmax(0, 15rem) 1fr 6.5rem; gap: 8px 14px; align-items: center; }
+  .bars .lab { font-size: 14px; }
+  .bars .lab small { display: block; color: var(--ink-3); font-size: 12px; }
+  .track { height: 16px; background: var(--rule-2); border-radius: 3px; overflow: hidden; }
+  .fill { height: 100%; background: #9fb0c0; }
+  .pick .fill { background: var(--jade); }
+  .pick .lab { font-weight: 600; }
+  .val { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .val.head { font: 12px/1.2 var(--sans); font-weight: 400; color: var(--ink-3); }
+  .note { color: var(--ink-3); font-size: 13px; margin-top: 10px; }
+  .checks { list-style: none; margin: 0; padding: 0; }
+  .checks li { display: grid; grid-template-columns: 24px 1fr auto; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--rule-2); align-items: baseline; }
+  .tick { font-weight: 700; color: var(--jade); }
+  .tick.no { color: var(--ink-3); font-weight: 400; }
+  .checks .d { color: var(--ink-3); font-size: 13px; display: block; }
+  .cites { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .ev.cite { cursor: pointer; margin: 0; } .ev.cite:hover { background: var(--blue-bg); }
+  .linkbtn { border: 0; background: none; color: var(--blue); text-decoration: underline; cursor: pointer; padding: 0 6px; }
+  .ev { font: 12px/1 ui-monospace, "SF Mono", Menlo, Consolas, monospace; padding: 3px 6px; border: 1px solid var(--rule); border-radius: 4px; background: #fff; color: var(--ink-2); margin-left: 4px; }
+  textarea { width: 100%; min-height: 170px; padding: 12px 14px; border: 1px solid var(--rule); border-radius: 6px; background: #fff; line-height: 1.55; resize: vertical; }
+  .review { margin-top: 10px; padding: 10px 14px; border-radius: 6px; font-size: 14px; }
+  .review.ok { background: var(--jade-bg); color: #0a5c4b; }
+  .review.bad { background: var(--red-bg); color: var(--red); }
+  .review ul { margin: 6px 0 0 18px; padding: 0; }
+  .actions { display: flex; gap: 10px; margin-top: 16px; align-items: center; flex-wrap: wrap; }
+  .done { padding: 16px 18px; border-radius: 6px; background: var(--blue-bg); color: #1d4468; }
+  .done.won { background: var(--jade-bg); color: #0a5c4b; }
+  .done.lost { background: var(--red-bg); color: var(--red); }
+  .sandbox { margin-top: 14px; padding: 12px 14px; border: 1px dashed #c9a24a; border-radius: 6px; background: #fffaf0; color: var(--amber); display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: 14px; }
+  details { margin-top: 30px; }
+  summary { cursor: pointer; font: 600 17px/1.2 var(--serif); }
+  .log { margin: 10px 0 0; padding: 0; list-style: none; font-size: 13px; color: var(--ink-2); }
+  .log li { padding: 4px 0; border-bottom: 1px solid var(--rule-2); display: grid; grid-template-columns: 78px 64px 1fr; gap: 8px; }
+  #toast { position: fixed; right: 22px; bottom: 22px; background: var(--ink); color: #fff; padding: 11px 16px; border-radius: 6px; opacity: 0; pointer-events: none; transition: opacity .2s; max-width: 420px; }
+  #toast.show { opacity: 1; }
+  @media (max-width: 860px) {
+    .app { grid-template-columns: 1fr; grid-template-rows: auto auto 1fr; }
+    aside { max-height: 38vh; border-right: 0; border-bottom: 1px solid var(--rule); }
+    main { padding: 20px 16px 50px; }
+    header { flex-wrap: wrap; gap: 10px 20px; }
+    .kpis { margin-left: 0; width: 100%; }
+    .bars { grid-template-columns: 1fr 5rem; } .bars .track { grid-column: 1 / -1; order: 3; }
+  }
+  @media (prefers-reduced-motion: reduce) { #toast { transition: none; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Dispute Desk</h1>
+    <span id="mode" class="mode">connecting</span>
+    <div class="kpis" id="kpis" aria-label="Results so far"></div>
+  </header>
+  <aside>
+    <div class="add" id="add"></div>
+    <div id="list" role="list"></div>
+  </aside>
+  <main id="main" aria-live="polite"></main>
+</div>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+const $ = (s, el = document) => el.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const usd = (m) => (m == null ? '' : `$${Number(typeof m === 'object' ? m.value : m).toFixed(2)}`);
+const REASON = { MERCHANDISE_OR_SERVICE_NOT_RECEIVED: 'Item not received', MERCHANDISE_OR_SERVICE_NOT_AS_DESCRIBED: 'Not as described', UNAUTHORISED: 'Unauthorised', OTHER: 'Other' };
+const MOVE = { FIGHT: 'Fight it', OFFER: 'Make an offer', ACCEPT: 'Accept and refund' };
+const state = { cases: [], selected: null, detail: null, kpis: null, scenarios: [], edits: {}, busy: false };
+
+async function api(path, opts) {
+  const res = await fetch(path, opts ? { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(opts) } : undefined);
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body.error || res.statusText);
+  return body;
+}
+let toastTimer;
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 3500); }
+const daysLeft = (iso) => (iso ? Math.ceil((new Date(iso) - Date.now()) / 86400000) : null);
+
+function stateChip(c) {
+  const o = c.outcome;
+  if (o) return { WON: ['go', 'Won'], LOST: ['stop', 'Lost'], SETTLED: ['wait', 'Settled'], ACCEPTED: ['wait', 'Refunded'], CANCELED: ['go', 'Canceled by buyer'] }[o.result].reverse();
+  if (c.state === 'AWAITING_APPROVAL') return ['Needs your decision', 'warn'];
+  if (c.state === 'ACTION_FAILED') return ['PayPal rejected the last step', 'stop'];
+  return [c.status === 'WAITING_FOR_BUYER_RESPONSE' ? 'Waiting on the buyer' : 'With PayPal', 'wait'];
+}
+const moveText = (c) => (c.recommendation === 'OFFER' ? `Offer ${usd(c.offer_amount)}` : MOVE[c.recommendation] ?? '');
+const SAMPLE = { 'inr-strong': 'Not received, strong proof', snad: 'Not as described, clear listing', 'inr-weak': 'Not received, shipped only', 'inr-low-value': 'Not received, $12 order', 'inr-injection': 'Buyer message tries to instruct the AI' };
+
+function renderChrome() {
+  const m = state.kpis;
+  const mode = $('#mode');
+  mode.textContent = m ? (m.mode === 'SIMULATED' ? 'Simulated PayPal' : 'PayPal sandbox') : 'connecting';
+  mode.className = 'mode' + (m && m.mode === 'SIMULATED' ? ' sim' : '');
+  $('#kpis').innerHTML = m ? [
+    ['Recovered', usd(m.recovered)], ['Refunded', usd(m.lost)], ['Fees', usd(m.fees)],
+    ['Fights won', m.fought ? `${m.won} of ${m.fought}` : 'none yet'], ['Audit log', m.audit.ok ? 'intact' : 'BROKEN'],
+  ].map(([k, v]) => `<div class="kpi">${k}<b>${esc(v)}</b></div>`).join('') : '';
+  const add = $('#add');
+  if (state.kpis && state.kpis.mode === 'SIMULATED' && !add.dataset.ready) {
+    add.dataset.ready = '1';
+    add.innerHTML = `<select id="scn" aria-label="Sample dispute">${state.scenarios.map((s) => `<option value="${s}">${esc(SAMPLE[s] ?? s)}</option>`).join('')}</select><button class="btn" id="addBtn">Add sample</button>`;
+    $('#addBtn').onclick = () => seed($('#scn').value);
+  }
+}
+
+function renderList() {
+  $('#list').innerHTML = state.cases.map((c) => {
+    const [label, tone] = stateChip(c);
+    return `<button class="row" role="listitem" data-id="${c.id}" aria-current="${c.id === state.selected}">
+      <div class="top"><span>${esc(c.order_title ?? c.dispute_id)}</span><span class="amt">${usd(c.amount)}</span></div>
+      <div class="sub">${esc(REASON[c.reason] ?? c.reason)}</div>
+      <div class="move"><span class="chip ${tone}">${esc(label)}</span>${!c.outcome && c.recommendation ? `<span>${esc(moveText(c))}</span>` : ''}</div></button>`;
+  }).join('');
+  document.querySelectorAll('.row').forEach((b) => (b.onclick = () => select(b.dataset.id)));
+}
+
+function proposalText(p) { return p.params.notes ?? p.params.note ?? p.params.message ?? ''; }
+
+function renderMain() {
+  const main = $('#main');
+  const d = state.detail;
+  if (!d) {
+    main.innerHTML = `<div class="empty"><h2>No disputes yet</h2><p>When a buyer opens a dispute, it lands here with the evidence already gathered and a recommended move. Add a sample to see how it works.</p>${(state.scenarios || []).map((s) => `<button class="btn" data-s="${s}">${esc(SAMPLE[s] ?? s)}</button>`).join('')}</div>`;
+    main.querySelectorAll('[data-s]').forEach((b) => (b.onclick = () => seed(b.dataset.s)));
+    return;
+  }
+  const a = d.analysis;
+  const rec = a.recommendation;
+  const p = a.proposals[0];
+  const left = daysLeft(d.due);
+  const maxLoss = Math.max(...a.options.map((o) => o.expected_loss));
+  const isOpen = d.state === 'AWAITING_APPROVAL' || d.state === 'ACTION_FAILED';
+  const verdict = rec.kind === 'FIGHT' ? 'Fight this one.' : rec.kind === 'OFFER' ? `Offer ${usd(rec.params.offer_amount)} instead of fighting.` : 'Accept and refund this one.';
+  const buyer = (d.dispute.messages || []).filter((m) => m.posted_by === 'BUYER').map((m) => m.content).join(' ');
+  const text = state.edits[p.id] ?? proposalText(p);
+  const field = 'notes' in p.params ? 'notes' : 'note' in p.params ? 'note' : 'message';
+  const pol = d.policy[p.id] ?? { ok: true, violations: [] };
+  const original = p.type === 'PROVIDE_EVIDENCE' ? a.drafts.evidence_note : p.type === 'MAKE_OFFER' ? (a.drafts.offer_note ?? '') : proposalText(p);
+  const HINT = { UNCITED_CLAIM: 'Nothing on file backs this sentence. Cite an item below or remove it', UNKNOWN_CITATION: 'This cites evidence that is not on file', ACTION_NOT_AVAILABLE: 'PayPal does not offer this step right now', DEADLINE_PASSED: 'The response deadline has passed', AMOUNT_EXCEEDS_LIMIT: 'The amount is above the limit' };
+
+  const sandbox = [];
+  if (d.dispute.status === 'UNDER_REVIEW') sandbox.push(`<button class="btn" data-sim="adjudicate:SELLER_FAVOR">PayPal rules for you</button><button class="btn" data-sim="adjudicate:BUYER_FAVOR">PayPal rules for the buyer</button>`);
+  if (d.dispute.status === 'WAITING_FOR_BUYER_RESPONSE') sandbox.push(`<button class="btn" data-sim="buyer:accept-offer">Buyer accepts the offer</button><button class="btn" data-sim="buyer:deny-offer">Buyer turns it down</button>`);
+
+  main.innerHTML = `<div class="sheet">
+    <h2 class="case">${esc(d.order_title ?? d.dispute_id)}, ${usd(d.amount)}</h2>
+    <p class="meta"><span><b>${esc(REASON[d.reason] ?? d.reason)}</b></span><span>Dispute <b>${esc(d.dispute_id)}</b></span>${left != null ? `<span>Respond within <b>${left} day${left === 1 ? '' : 's'}</b></span>` : ''}${a.risk_flags.includes('PROMPT_INJECTION_ATTEMPT') ? '<span class="chip stop">Buyer message tried to give instructions; ignored</span>' : ''}</p>
+    <blockquote>${esc(buyer)}</blockquote>
+
+    <section aria-labelledby="h-rec"><h3 id="h-rec">Recommendation</h3>
+      <p class="verdict">${esc(verdict)}</p>
+      <p class="why">${esc(rec.rationale)}${rec.assumed ? ' These odds are starting assumptions until you have results of your own.' : ''}</p>
+      <div class="bars" role="table" aria-label="Expected loss by option">
+        <div></div><div></div><div class="val head">Expected loss</div>
+        ${a.options.map((o) => `<div class="lab ${o === rec || (o.kind === rec.kind && o.label === rec.label) ? 'pick' : ''}">${esc(o.label)}<small>${o.kind === 'FIGHT' ? `${Math.round(o.p_win * 100)}% to win` : o.kind === 'OFFER' ? `${Math.round(o.q_accept * 100)}% buyer accepts` : 'certain'}</small></div>
+        <div class="track ${o.kind === rec.kind && o.label === rec.label ? 'pick' : ''}"><div class="fill" style="width:${Math.max(3, (o.expected_loss / maxLoss) * 100)}%"></div></div>
+        <div class="val">${usd(o.expected_loss)}</div>`).join('')}
+      </div>
+      <p class="note">Expected loss is what each move costs on average, including the dispute fee if a fight is lost.${a.recommendation_notes.length ? ' ' + esc(a.recommendation_notes.join(' ')) : ''}</p>
+    </section>
+
+    <section aria-labelledby="h-ev"><h3 id="h-ev">Evidence on file (${Math.round(a.assessment.strength * 100)}%, ${a.assessment.bucket})</h3>
+      <ul class="checks">${a.assessment.checks.map((c) => `<li><span class="tick ${c.passed ? '' : 'no'}" aria-label="${c.passed ? 'present' : 'missing'}">${c.passed ? '✓' : '–'}</span><span>${esc(c.label)}<span class="d">${esc(c.detail)}</span></span><span>${c.evidence_ids.map((i) => `<span class="ev" title="${esc((d.evidence.find((e) => e.id === i) || {}).summary || '')}">${i}</span>`).join('')}</span></li>`).join('')}</ul>
+    </section>
+
+    <section aria-labelledby="h-msg"><h3 id="h-msg">${p.type === 'PROVIDE_EVIDENCE' ? 'What we will send to PayPal' : p.type === 'MAKE_OFFER' ? 'Offer note' : 'Message'}</h3>
+      <textarea id="txt" aria-label="Text to send" ${isOpen ? '' : 'readonly'}>${esc(text)}</textarea>
+      ${isOpen ? `<div class="cites" aria-label="Evidence you can cite">${d.evidence.map((e) => `<button class="ev cite" data-cite="${e.id}" title="${esc(e.summary)}">${e.id}</button>`).join('')}<button class="linkbtn" id="restore" ${text === original ? 'hidden' : ''}>Restore the draft</button></div>` : ''}
+      <div class="review" id="review"></div>
+      ${isOpen ? `<div class="actions"><button class="btn primary" id="send" ${state.busy ? 'disabled' : ''}>Send to PayPal</button><button class="btn" id="skip">Don't send</button><span class="note">${esc(p.summary)}</span></div>` : ''}
+      ${d.state === 'ACTION_FAILED' ? `<div class="review bad">PayPal rejected the last step: ${esc(Object.values(d.executed).slice(-1)[0]?.error || 'unknown error')}. Fix the cause and send again.</div>` : ''}
+    </section>
+
+    ${d.outcome ? `<section><div class="done ${d.outcome.result === 'WON' ? 'won' : d.outcome.result === 'LOST' ? 'lost' : ''}"><b>${{ WON: 'You won.', LOST: 'You lost.', SETTLED: 'Settled with the buyer.', ACCEPTED: 'Refunded.', CANCELED: 'The buyer canceled.' }[d.outcome.result]}</b> Kept ${usd(d.outcome.recovered)}, refunded ${usd(d.outcome.lost)}${d.outcome.fees ? `, fee ${usd(d.outcome.fees)}` : ''}.</div></section>` : (!isOpen ? `<section><div class="done">Sent. The dispute is now <b>${esc(d.dispute.status.toLowerCase().replace(/_/g, ' '))}</b>.</div></section>` : '')}
+    ${sandbox.length ? `<div class="sandbox"><b>Sandbox control</b> ${sandbox.join('')}</div>` : ''}
+
+    <details><summary>Activity</summary><ul class="log">${d.audit.map((e) => `<li><span>${esc(e.ts.slice(11, 19))}</span><span>${esc(e.actor)}</span><span>${esc(e.event.toLowerCase().replace(/_/g, ' '))}</span></li>`).join('')}</ul></details>
+  </div>`;
+
+  const t = $('#txt');
+  const send = $('#send');
+  const paint = (r) => {
+    const box = $('#review');
+    const bad = !r.ok || a.review.tone_issues.length;
+    box.className = 'review ' + (bad ? 'bad' : 'ok');
+    box.innerHTML = bad ? `Not ready to send.<ul>${r.violations.map((v) => `<li>${esc(HINT[v.code] ?? v.code)}${v.code.includes('CIT') || v.code === 'UNCITED_CLAIM' ? `: <i>${esc(v.detail)}</i>` : `. ${esc(v.detail)}`}</li>`).join('')}${a.review.tone_issues.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : 'Every factual sentence points to evidence on file.';
+    if (send) send.disabled = state.busy || !r.ok;
+  };
+  paint(pol);
+  let timer;
+  const live = () => { clearTimeout(timer); timer = setTimeout(async () => { try { paint(await api(`/api/cases/${d.id}/check`, { proposal_id: p.id, edits: { [field]: t.value } })); } catch {} }, 250); };
+  const flag = () => { const r = $('#restore'); if (r) r.hidden = t.value === original; };
+  if (t && isOpen) t.oninput = () => { state.edits[p.id] = t.value; flag(); live(); };
+  main.querySelectorAll('[data-cite]').forEach((b) => (b.onclick = () => {
+    const at = t.selectionStart ?? t.value.length;
+    t.value = t.value.slice(0, at) + ` [${b.dataset.cite}]` + t.value.slice(at);
+    t.focus(); state.edits[p.id] = t.value; flag(); live();
+  }));
+  const restore = $('#restore');
+  if (restore) restore.onclick = () => { t.value = original; state.edits[p.id] = original; flag(); live(); };
+  if (send) send.onclick = async () => {
+    state.busy = true; send.disabled = true;
+    try {
+      const edited = state.edits[p.id];
+      const edits = edited !== undefined && edited !== proposalText(p) ? { [field]: edited } : undefined;
+      state.detail = await api(`/api/cases/${d.id}/approve`, { proposal_id: p.id, approver: 'merchant@example.com', edits });
+      delete state.edits[p.id];
+      toast(state.detail.state === 'AWAITING_APPROVAL' ? 'Not sent: a sentence has no evidence behind it' : 'Sent to PayPal');
+    } catch (e) { toast(e.message); }
+    state.busy = false; await refresh();
+  };
+  const skip = $('#skip');
+  if (skip) skip.onclick = async () => { const reason = prompt('Why not send this? (kept in the activity log)') ?? ''; await api(`/api/cases/${d.id}/reject`, { proposal_id: p.id, approver: 'merchant@example.com', reason }); toast('Not sent'); await refresh(); };
+  main.querySelectorAll('[data-sim]').forEach((b) => (b.onclick = async () => {
+    const [kind, v] = b.dataset.sim.split(':');
+    if (kind === 'adjudicate') await api('/api/demo/adjudicate', { dispute_id: d.dispute_id, outcome: v });
+    else await api('/api/demo/buyer', { dispute_id: d.dispute_id, action: v });
+    await refresh();
+  }));
+}
+
+async function select(id) { state.selected = id; state.detail = await api('/api/cases/' + id); renderList(); renderMain(); }
+async function seed(name) { const c = await api('/api/demo/scenario', { name }); state.selected = c.id; await refresh(); toast('Added ' + name); }
+async function refresh() {
+  state.cases = await api('/api/cases');
+  state.kpis = await api('/api/kpis');
+  if (!state.scenarios.length && state.kpis.mode === 'SIMULATED') state.scenarios = await api('/api/demo/scenarios');
+  if (!state.selected && state.cases[0]) state.selected = state.cases[0].id;
+  state.detail = state.selected && state.cases.some((c) => c.id === state.selected) ? await api('/api/cases/' + state.selected) : null;
+  renderChrome(); renderList(); renderMain();
+}
+refresh().catch((e) => toast(e.message));
+setInterval(() => { if (!state.busy && document.activeElement?.id !== 'txt') refresh().catch(() => {}); }, 4000);
+</script>
+</body>
+</html>

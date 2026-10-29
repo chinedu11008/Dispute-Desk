@@ -1,0 +1,20 @@
+{
+  "name": "dispute-desk",
+  "version": "0.1.0",
+  "description": "AI dispute counsel for PayPal merchants: evidence vault, expected-loss decisions, human-approved execution.",
+  "type": "module",
+  "license": "MIT",
+  "private": true,
+  "engines": { "node": ">=22.18" },
+  "scripts": {
+    "test": "node --test \"test/**/*.test.ts\"",
+    "demo": "node scripts/demo.ts",
+    "start": "node src/server/main.ts",
+    "spike": "node scripts/spike.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.8.0"
+  }
+}
